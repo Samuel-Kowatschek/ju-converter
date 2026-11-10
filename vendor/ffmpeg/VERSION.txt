@@ -1,0 +1,6 @@
+@ffmpeg/ffmpeg 0.12.15
+@ffmpeg/util   0.12.2
+@ffmpeg/core   0.12.10 (Single-Thread, ESM-Build)
+Quelle: https://github.com/ffmpegwasm/ffmpeg.wasm
+ffmpeg: https://ffmpeg.org (LGPL/GPL je nach Build; der Core enthaelt GPL-Teile wie x264)
+Lizenzen: siehe LICENSE-NOTICE.txt

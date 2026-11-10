@@ -1,0 +1,4 @@
+@ffmpeg/ffmpeg, @ffmpeg/util, @ffmpeg/core: MIT-Lizenz (Copyright ffmpeg.wasm Contributors),
+Quelle: https://github.com/ffmpegwasm/ffmpeg.wasm
+FFmpeg selbst: LGPL v2.1+ bzw. GPL v2+ je nach Build (der Core enthaelt GPL-Komponenten wie x264).
+Quellcode und Lizenztexte: https://ffmpeg.org/legal.html und https://github.com/ffmpegwasm/ffmpeg.wasm-core
