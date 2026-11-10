@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; media-src 'self' blob:; style-src 'self'; img-src 'self' data:">
+  <title>Mono Converter</title>
+  <meta name="description" content="Wandelt die Tonspur eines Videos lokal im Browser von Stereo zu Mono um.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1 id="t-title"></h1>
+    <p id="t-sub" class="sub"></p>
+    <p id="t-privacy" class="privacy"></p>
+
+    <label id="dropzone" class="dropzone" for="file">
+      <input id="file" type="file" accept=".mp4,.mov,.m4v,.mkv,.webm,video/*">
+      <span id="dz-text"></span>
+    </label>
+
+    <p id="fileinfo" class="fileinfo" hidden></p>
+
+    <button id="go" type="button" class="primary" disabled></button>
+
+    <div id="progress-wrap" hidden>
+      <progress id="progress" max="100"></progress>
+      <span id="progress-label"></span>
+    </div>
+
+    <div id="status" role="status" aria-live="polite"></div>
+
+    <a id="download" class="primary button" hidden></a>
+
+    <details id="details" hidden>
+      <summary id="t-details"></summary>
+      <pre id="log"></pre>
+    </details>
+  </main>
+  <footer>
+    <p id="t-footer"></p>
+  </footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
