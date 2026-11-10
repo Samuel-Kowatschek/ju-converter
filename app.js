@@ -2,6 +2,8 @@
 import { Converter, CODECS, WARN_BYTES, MAX_BYTES, getExt, outputName } from "./convert.js";
 
 // Alle Texte zentral (später de/en möglich)
+const VERSION = "v1.0";
+
 const TEXT = {
   title: "Mono Converter",
   sub: "Wandelt die Tonspur eines Videos von Stereo zu Mono um. Das Bild bleibt unverändert.",
@@ -48,6 +50,7 @@ $("dz-text").textContent = TEXT.dropzone;
 $("t-details").textContent = TEXT.details;
 $("t-footer").innerHTML = TEXT.footer;
 el.go.textContent = TEXT.go;
+$("version").textContent = VERSION;
 
 const conv = new Converter();
 let current = null; // gewählte Datei

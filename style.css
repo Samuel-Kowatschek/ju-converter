@@ -175,6 +175,7 @@ pre {
 
 footer { padding: 1rem 1.5rem 1.5rem; text-align: center; color: var(--muted); font-size: .8rem; }
 footer p { margin: 0 auto; max-width: 34rem; }
+.version { margin: .75rem 0 0 !important; max-width: none !important; text-align: left; font-size: .75rem; opacity: .7; font-variant-numeric: tabular-nums; }
 footer a { color: var(--accent); text-decoration: none; }
 footer a:hover { text-decoration: underline; }
 
