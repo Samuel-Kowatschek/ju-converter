@@ -13,6 +13,6 @@ Tools:
 - Starten: `python3 -m http.server 8000` (file:// geht nicht).
 - Prüfen: `node --check` auf JS, Playwright gegen den lokalen Server, `ffprobe` auf dem Ergebnis (Mono: 1 Audiokanal, Video-Codec/Dauer unverändert; Overlay: Maße = Format, Dauer = Video).
 - Neues Tool: Tab + Panel in `index.html`, Texte in `text.js`, Logik über `engine.js` (`engine.lock`).
-- Workflow: Feature-Branch, Merge per PR nach `main`.
+- Workflow: direkt auf `main` arbeiten und pushen (kein Feature-Branch, kein PR). Jeder Push deployt sofort auf GitHub Pages.
 - Keine externen Requests (CSP im HTML), keine Speicherung, Dateien nur im Speicher.
 - Grenzen: ~1 GB Warnung, 2 GB gesperrt, Overlay-Rendering in WASM ist langsam bei langen Videos.
