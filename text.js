@@ -1,0 +1,72 @@
+// Alle UI-Texte zentral (später de/en möglich). Standard: Deutsch.
+import { fmt } from "./ui.js";
+
+export const VERSION = "v2.0";
+
+export const TEXT = {
+  title: "Toolbox",
+  sub: "Werkzeuge für JuicyUnderground.",
+  privacy: "Deine Dateien verlassen nie deinen Rechner. Alles läuft lokal im Browser.",
+  tabsLabel: "Tools",
+  busyOther: "Gerade läuft schon ein anderer Job. Bitte warten, bis er fertig ist.",
+  loadingEngine: "Lade Engine ... (beim ersten Mal ca. 30 MB)",
+  warnBig: "Große Datei: Das kann viel Speicher brauchen, der Tab könnte abstürzen.",
+  tooBig: "Datei zu groß (über 2 GB). Der Browser-Speicher reicht dafür nicht, bitte ein Desktop-Tool nutzen.",
+  details: "Details (ffmpeg-Log)",
+  size: (name, bytes) => `${name} · ${fmt(bytes)}`,
+  progress: (p) => (p == null ? "Arbeite ..." : `Arbeite ... ${p} %`),
+  download: (name) => `Herunterladen: ${name}`,
+  engineError: "Die Engine konnte nicht geladen werden. Bitte Seite neu laden.",
+  footer:
+    'Läuft mit <a href="https://github.com/ffmpegwasm/ffmpeg.wasm">ffmpeg.wasm</a> ' +
+    '(<a href="https://ffmpeg.org/legal.html">FFmpeg</a>, LGPL/GPL), lokal gehostet. ' +
+    'Lizenzen: <a href="vendor/ffmpeg/LICENSE-NOTICE.txt">ffmpeg</a>, ' +
+    '<a href="fonts/OFL.txt">Bricolage Grotesque (OFL)</a>.',
+
+  mono: {
+    tab: "01.Mono",
+    title: "01.Mono",
+    sub: "Tonspur eines Videos von Stereo zu Mono. Das Bild bleibt unverändert.",
+    dropzone: "Video ablegen oder klicken",
+    dropHint: "MP4, MOV, M4V, MKV, WebM",
+    go: "Umwandeln",
+    badType: "Dieses Format wird nicht unterstützt. Erlaubt: MP4, MOV, M4V, MKV, WebM.",
+    noAudio: "Keine Tonspur gefunden.",
+    alreadyMono: "Die Tonspur ist schon mono. Es gibt nichts umzuwandeln.",
+    converting: "Wandle um ...",
+    surroundNote: (n) => `Hinweis: ${n} Tonspur(en) mit mehr als 2 Kanälen (Surround -> Mono).`,
+    done: (a, b) => `Fertig. Größe vorher: ${fmt(a)}, nachher: ${fmt(b)}.`,
+    error: "Die Umwandlung ist fehlgeschlagen. Die Datei ist evtl. beschädigt oder zu groß.",
+  },
+
+  overlay: {
+    tab: "02.Overlay",
+    title: "02.Overlay",
+    sub: "Video hinter ein PNG legen. Beide lassen sich verschieben und skalieren.",
+    videoDrop: "Video",
+    videoHint: "MP4, MOV, M4V, MKV, WebM",
+    pngDrop: "PNG",
+    pngHint: "mit transparenter Fläche",
+    badVideo: "Dieses Videoformat wird nicht unterstützt. Erlaubt: MP4, MOV, M4V, MKV, WebM.",
+    badPng: "Bitte eine PNG-Datei wählen.",
+    videoUnreadable: "Das Video kann der Browser nicht in der Vorschau zeigen. Die Umwandlung kann trotzdem klappen.",
+    format: "Format",
+    formats: { png: "Wie PNG", square: "1:1", portrait: "4:5", story: "9:16" },
+    background: "Hintergrund",
+    colors: { black: "Schwarz", white: "Weiß", blue: "Blau", pink: "Pink", lime: "Lime" },
+    layer: "Ebene bearbeiten",
+    layers: { video: "Video", png: "PNG" },
+    stageLabel: "Vorschau. Ziehen oder Pfeiltasten verschieben die gewählte Ebene, Umschalt + Pfeil in großen Schritten.",
+    x: "X",
+    y: "Y",
+    scale: "Größe",
+    center: "Zentrieren",
+    cover: "Füllen",
+    contain: "Einpassen",
+    go: "Video erstellen",
+    slowNote: "Das Video wird neu berechnet. Je nach Länge kann das einige Minuten dauern.",
+    rendering: "Erstelle Video ...",
+    done: (b) => `Fertig. Größe: ${fmt(b)}.`,
+    error: "Das Erstellen ist fehlgeschlagen. Die Datei ist evtl. beschädigt oder zu groß.",
+  },
+};

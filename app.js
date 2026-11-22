@@ -1,157 +1,131 @@
-// UI-Logik: Datei wählen, Validierung, Fortschritt, Download, Fehleranzeige.
-import { Converter, CODECS, WARN_BYTES, MAX_BYTES, getExt, outputName } from "./convert.js";
+// Seitenrahmen (Texte, Tabs, Version) und UI für Tool 01.Mono.
+import { TEXT, VERSION } from "./text.js";
+import { $, bindDrop, createOutput } from "./ui.js";
+import { engine, WARN_BYTES, MAX_BYTES, getExt, BusyError } from "./engine.js";
+import { CODECS, outputName, analyze, convert, discard } from "./convert.js";
+import { initOverlay } from "./overlay-ui.js";
 
-// Alle Texte zentral (später de/en möglich)
-const VERSION = "v1.0";
-
-const TEXT = {
-  title: "Mono Converter",
-  sub: "Wandelt die Tonspur eines Videos von Stereo zu Mono um. Das Bild bleibt unverändert.",
-  privacy: "Deine Datei verlässt deinen Rechner nie. Alles läuft lokal im Browser.",
-  dropzone: "Video hier ablegen oder klicken zum Auswählen (MP4, MOV, M4V, MKV, WebM)",
-  go: "Umwandeln",
-  goBusy: "Bitte warten ...",
-  loadingEngine: "Lade Engine ... (beim ersten Mal ca. 30 MB)",
-  analyzing: "Analysiere Datei ...",
-  converting: (p) => (p == null ? "Wandle um ..." : `Wandle um ... ${p} %`),
-  size: (name, bytes) => `${name} (${fmt(bytes)})`,
-  warnBig: "Große Datei: Die Umwandlung kann viel Speicher brauchen, der Tab könnte abstürzen.",
-  tooBig: "Datei zu groß (über 2 GB). Der Browser-Speicher reicht dafür nicht, bitte ein Desktop-Tool nutzen.",
-  badType: "Dieses Format wird nicht unterstützt. Erlaubt: MP4, MOV, M4V, MKV, WebM.",
-  noAudio: "Keine Tonspur gefunden.",
-  alreadyMono: "Die Tonspur ist schon mono. Es gibt nichts umzuwandeln.",
-  surround: "Surround -> Mono",
-  surroundNote: (n) => `Hinweis: ${n} Tonspur(en) mit mehr als 2 Kanälen (Surround -> Mono).`,
-  done: (a, b) => `Fertig. Größe vorher: ${fmt(a)}, nachher: ${fmt(b)}.`,
-  download: (name) => `Herunterladen: ${name}`,
-  error: "Die Umwandlung ist fehlgeschlagen. Die Datei ist evtl. beschädigt oder zu groß. Details unten.",
-  engineError: "Die Engine konnte nicht geladen werden. Bitte Seite neu laden.",
-  details: "Details (ffmpeg-Log)",
-  footer: 'Umwandlung mit <a href="https://github.com/ffmpegwasm/ffmpeg.wasm">ffmpeg.wasm</a> (<a href="https://ffmpeg.org/legal.html">FFmpeg</a>, LGPL/GPL), lokal gehostet. Lizenztexte in <a href="vendor/ffmpeg/LICENSE-NOTICE.txt">vendor/ffmpeg/</a>.',
-};
-
-function fmt(bytes) {
-  if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(2) + " GB";
-  if (bytes >= 1024 ** 2) return (bytes / 1024 ** 2).toFixed(1) + " MB";
-  return Math.max(1, Math.round(bytes / 1024)) + " KB";
-}
-
-const $ = (id) => document.getElementById(id);
-const el = {
-  file: $("file"), drop: $("dropzone"), info: $("fileinfo"), go: $("go"),
-  progWrap: $("progress-wrap"), prog: $("progress"), progLabel: $("progress-label"),
-  status: $("status"), dl: $("download"), details: $("details"), log: $("log"),
-};
-
+// ---------- Rahmen ----------
 $("t-title").textContent = TEXT.title;
 $("t-sub").textContent = TEXT.sub;
 $("t-privacy").textContent = TEXT.privacy;
-$("dz-text").textContent = TEXT.dropzone;
-$("t-details").textContent = TEXT.details;
 $("t-footer").innerHTML = TEXT.footer;
-el.go.textContent = TEXT.go;
 $("version").textContent = VERSION;
+$("tabs").setAttribute("aria-label", TEXT.tabsLabel);
+for (const s of document.querySelectorAll(".t-details")) s.textContent = TEXT.details;
 
-const conv = new Converter();
-let current = null; // gewählte Datei
-let busy = false;
-let downloadUrl = null;
+// ---------- Tabs (per Hash verlinkbar: #mono, #overlay) ----------
+const TOOLS = ["mono", "overlay"];
+const tabs = TOOLS.map((t) => $(`tab-${t}`));
+tabs.forEach((b, i) => { b.textContent = TEXT[TOOLS[i]].tab; });
 
-function setStatus(msg, kind = "") {
-  el.status.textContent = msg;
-  el.status.className = kind;
+function show(tool, focus = false) {
+  if (!TOOLS.includes(tool)) tool = TOOLS[0];
+  TOOLS.forEach((t, i) => {
+    const on = t === tool;
+    tabs[i].setAttribute("aria-selected", String(on));
+    tabs[i].tabIndex = on ? 0 : -1;
+    $(`panel-${t}`).hidden = !on;
+  });
+  if (focus) tabs[TOOLS.indexOf(tool)].focus();
+  if (location.hash !== "#" + tool) history.replaceState(null, "", "#" + tool);
+  document.dispatchEvent(new CustomEvent("toolchange", { detail: tool }));
 }
+tabs.forEach((b, i) => {
+  b.addEventListener("click", () => show(TOOLS[i]));
+  b.addEventListener("keydown", (e) => {
+    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (d) { e.preventDefault(); show(TOOLS[(i + d + TOOLS.length) % TOOLS.length], true); }
+  });
+});
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
 
-function resetResult() {
-  if (downloadUrl) { URL.revokeObjectURL(downloadUrl); downloadUrl = null; }
-  el.dl.hidden = true;
-  el.details.hidden = true;
-  el.progWrap.hidden = true;
-  setStatus("");
-}
+// ---------- 01.Mono ----------
+const T = TEXT.mono;
+$("m-title").textContent = T.title;
+$("m-sub").textContent = T.sub;
+$("m-drop").textContent = T.dropzone;
+$("m-hint").textContent = T.dropHint;
 
-function setProgress(p) {
-  el.progWrap.hidden = false;
-  if (p == null || !isFinite(p)) {
-    el.prog.removeAttribute("value");
-    el.progLabel.textContent = "";
-  } else {
-    const pct = Math.max(0, Math.min(100, Math.round(p * 100)));
-    el.prog.value = pct;
-    el.progLabel.textContent = pct + " %";
-    setStatus(TEXT.converting(pct));
-  }
-}
+const go = $("mono-go");
+const info = $("mono-info");
+const drop = $("mono-drop");
+const out = createOutput("mono");
+go.textContent = T.go;
+
+let current = null;
+let running = false;
 
 function pick(file) {
-  if (busy || !file) return;
-  resetResult();
+  if (running) return;
+  out.reset();
   current = null;
-  el.go.disabled = true;
-  el.info.hidden = false;
-  el.info.textContent = TEXT.size(file.name, file.size);
-  if (!CODECS[getExt(file.name)]) return setStatus(TEXT.badType, "error");
-  if (file.size >= MAX_BYTES) return setStatus(TEXT.tooBig, "error");
-  if (file.size >= WARN_BYTES) setStatus(TEXT.warnBig, "warn");
+  go.disabled = true;
+  drop.classList.add("has-file");
+  info.hidden = false;
+  info.textContent = TEXT.size(file.name, file.size);
+  if (!CODECS[getExt(file.name)]) return out.status(T.badType, "error");
+  if (file.size >= MAX_BYTES) return out.status(TEXT.tooBig, "error");
+  if (file.size >= WARN_BYTES) out.status(TEXT.warnBig, "warn");
   current = file;
-  el.go.disabled = false;
+  go.disabled = false;
 }
 
 async function run() {
-  if (!current || busy) return;
+  if (!current || running) return;
   const file = current;
-  busy = true;
-  el.go.disabled = true;
-  el.go.textContent = TEXT.goBusy;
-  resetResult();
-  conv.onLoadStart = () => setStatus(TEXT.loadingEngine);
-  conv.onProgress = setProgress;
-  let stage = "engine";
+  running = true;
+  go.disabled = true;
+  out.reset();
+  let loaded = !!engine.ff;
   try {
-    setProgress(null);
-    setStatus(TEXT.loadingEngine);
-    const { streams } = await conv.analyze(file);
-    stage = "convert";
-    if (!streams.length) {
-      await conv.discard(file);
-      return setStatus(TEXT.noAudio, "error");
-    }
-    if (streams.every((s) => s.channels === 1)) {
-      await conv.discard(file);
-      return setStatus(TEXT.alreadyMono, "ok");
-    }
-    const surround = streams.filter((s) => s.channels > 2).length;
-    setStatus(TEXT.converting(null));
-    setProgress(null);
-    const blob = await conv.convert(file, streams);
-    downloadUrl = URL.createObjectURL(blob);
-    const name = outputName(file.name);
-    el.dl.href = downloadUrl;
-    el.dl.download = name;
-    el.dl.textContent = TEXT.download(name);
-    el.dl.hidden = false;
-    el.prog.value = 100;
-    let msg = TEXT.done(file.size, blob.size);
-    if (surround) msg += " " + TEXT.surroundNote(surround);
-    setStatus(msg, "ok");
+    await engine.lock(async () => {
+      out.progress(null);
+      out.status(TEXT.loadingEngine, "info");
+      await engine.load();
+      loaded = true;
+      const streams = await analyze(file);
+      if (!streams.length) {
+        await discard(file);
+        out.hideProgress();
+        return out.status(T.noAudio, "error");
+      }
+      if (streams.every((s) => s.channels === 1)) {
+        await discard(file);
+        out.hideProgress();
+        return out.status(T.alreadyMono, "ok");
+      }
+      const surround = streams.filter((s) => s.channels > 2).length;
+      out.status(T.converting, "info");
+      engine.onProgress = (p) => {
+        const pct = out.progress(p);
+        if (pct != null) out.status(TEXT.progress(pct), "info");
+      };
+      const blob = await convert(file, streams);
+      const name = outputName(file.name);
+      out.progress(1);
+      out.download(blob, name, TEXT.download(name));
+      let msg = T.done(file.size, blob.size);
+      if (surround) msg += " " + T.surroundNote(surround);
+      out.status(msg, "ok");
+    });
   } catch (e) {
-    el.log.textContent = conv.log + "\n" + (e && e.message ? e.message : e);
-    el.details.hidden = false;
-    setStatus(stage === "engine" && !conv.log ? TEXT.engineError : TEXT.error, "error");
-    el.progWrap.hidden = true;
+    out.hideProgress();
+    if (e instanceof BusyError) {
+      out.status(TEXT.busyOther, "warn");
+    } else {
+      out.showLog(engine.log + "\n" + (e && e.message ? e.message : e));
+      out.status(loaded ? T.error : TEXT.engineError, "error");
+    }
   } finally {
-    busy = false;
-    el.go.textContent = TEXT.go;
-    el.go.disabled = !current;
+    running = false;
+    go.disabled = !current;
   }
 }
 
-el.file.addEventListener("change", () => pick(el.file.files[0]));
-el.go.addEventListener("click", run);
-for (const ev of ["dragenter", "dragover"]) {
-  el.drop.addEventListener(ev, (e) => { e.preventDefault(); el.drop.classList.add("drag"); });
-}
-for (const ev of ["dragleave", "drop"]) {
-  el.drop.addEventListener(ev, (e) => { e.preventDefault(); el.drop.classList.remove("drag"); });
-}
-el.drop.addEventListener("drop", (e) => pick(e.dataTransfer.files[0]));
+bindDrop(drop, $("mono-file"), pick);
+go.addEventListener("click", run);
+
+// ---------- 02.Overlay ----------
+initOverlay();

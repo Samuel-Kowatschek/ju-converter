@@ -1,0 +1,1 @@
+Bricolage Grotesque (Variable: wght 200-800, wdth 75-100, opsz 12-96) aus @fontsource-variable/bricolage-grotesque 5.3.0, SIL OFL 1.1 (siehe OFL.txt)

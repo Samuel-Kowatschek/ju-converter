@@ -1,6 +1,5 @@
-// ffmpeg-Wrapper: laden, analysieren, umwandeln, aufräumen.
-import { FFmpeg } from "./vendor/ffmpeg/ffmpeg/index.js";
-import { fetchFile } from "./vendor/ffmpeg/util/index.js";
+// Tool 01: Tonspur Stereo -> Mono. Bild wird nicht neu kodiert.
+import { engine, getExt, baseName } from "./engine.js";
 
 // Endung -> Audio-Codec
 export const CODECS = {
@@ -11,20 +10,10 @@ export const CODECS = {
   webm: "libopus",
 };
 
-export const WARN_BYTES = 1024 ** 3; // ab 1 GB Warnung
-export const MAX_BYTES = 2 * 1024 ** 3; // ab 2 GB gesperrt
-
 const FALLBACK_BITRATE = "128k";
 
-export function getExt(name) {
-  const m = /\.([a-z0-9]+)$/i.exec(name);
-  return m ? m[1].toLowerCase() : "";
-}
-
 export function outputName(name) {
-  const ext = getExt(name);
-  const base = ext ? name.slice(0, -(ext.length + 1)) : name;
-  return `${base}_mono.${ext}`;
+  return `${baseName(name)}_mono.${getExt(name)}`;
 }
 
 // Tonspuren aus dem ffmpeg-Log lesen
@@ -51,98 +40,52 @@ export function parseAudioStreams(log) {
   return streams;
 }
 
-export class Converter {
-  constructor() {
-    this.ffmpeg = null;
-    this.log = "";
-    this.onProgress = () => {};
-    this.onLoadStart = () => {};
+// Datei einlesen und Tonspuren analysieren. Die Eingabe bleibt im MEMFS liegen.
+export async function analyze(file) {
+  const inName = "mono_in." + getExt(file.name);
+  try {
+    await engine.write(inName, file);
+    // Ohne Ausgabedatei endet ffmpeg mit Fehlercode, das Log reicht aber.
+    await engine.exec(["-hide_banner", "-i", inName]);
+    return parseAudioStreams(engine.log);
+  } catch (e) {
+    engine.reset();
+    throw e;
   }
+}
 
-  async #ensure() {
-    if (this.ffmpeg) return;
-    this.onLoadStart();
-    const ff = new FFmpeg();
-    ff.on("log", ({ message }) => {
-      this.log += message + "\n";
-    });
-    ff.on("progress", ({ progress }) => this.onProgress(progress));
-    try {
-      await ff.load({
-        coreURL: new URL("./vendor/ffmpeg/core/ffmpeg-core.js", import.meta.url).href,
-        wasmURL: new URL("./vendor/ffmpeg/core/ffmpeg-core.wasm", import.meta.url).href,
-      });
-    } catch (e) {
-      try { ff.terminate(); } catch {}
-      throw e;
-    }
-    this.ffmpeg = ff;
+// Umwandeln. Setzt analyze() voraus.
+export async function convert(file, streams) {
+  const ext = getExt(file.name);
+  const inName = "mono_in." + ext;
+  const outName = "mono_out." + ext;
+  const bitrate = streams.find((s) => s.kbps)?.kbps;
+  const br = bitrate ? `${bitrate}k` : FALLBACK_BITRATE;
+  try {
+    const code = await engine.exec([
+      "-i", inName,
+      "-map", "0",
+      "-c:v", "copy",
+      "-c:s", "copy",
+      "-ac", "1",
+      "-c:a", CODECS[ext],
+      "-b:a", br,
+      outName,
+    ]);
+    if (code !== 0) throw new Error("ffmpeg exit " + code);
+    const out = await engine.read(outName);
+    return new Blob([out], { type: file.type || "video/" + ext });
+  } catch (e) {
+    const log = engine.log;
+    engine.reset();
+    engine.log = log;
+    throw e;
+  } finally {
+    await engine.remove(inName, outName);
   }
+}
 
-  #reset() {
-    if (this.ffmpeg) {
-      try { this.ffmpeg.terminate(); } catch {}
-      this.ffmpeg = null;
-    }
-  }
-
-  // Datei einlesen und Tonspuren analysieren. Gibt { streams } zurück.
-  async analyze(file) {
-    await this.#ensure();
-    this.log = "";
-    const inName = "input." + getExt(file.name);
-    try {
-      let data = await fetchFile(file);
-      await this.ffmpeg.writeFile(inName, data);
-      data = null; // Referenz freigeben
-      // Ohne Ausgabedatei endet ffmpeg mit Fehlercode, das Log reicht aber.
-      await this.ffmpeg.exec(["-hide_banner", "-i", inName]);
-      return { streams: parseAudioStreams(this.log), inName };
-    } catch (e) {
-      this.#reset();
-      throw e;
-    }
-  }
-
-  // Umwandeln. Setzt analyze() voraus (Datei liegt im MEMFS).
-  async convert(file, streams) {
-    const ext = getExt(file.name);
-    const inName = "input." + ext;
-    const outName = "output." + ext;
-    const bitrate = streams.find((s) => s.kbps)?.kbps;
-    const br = bitrate ? `${bitrate}k` : FALLBACK_BITRATE;
-    this.log = "";
-    try {
-      const code = await this.ffmpeg.exec([
-        "-i", inName,
-        "-map", "0",
-        "-c:v", "copy",
-        "-c:s", "copy",
-        "-ac", "1",
-        "-c:a", CODECS[ext],
-        "-b:a", br,
-        outName,
-      ]);
-      if (code !== 0) throw new Error("ffmpeg exit " + code);
-      const out = await this.ffmpeg.readFile(outName);
-      return new Blob([out], { type: file.type || "video/" + ext });
-    } catch (e) {
-      this.#reset();
-      throw e;
-    } finally {
-      await this.cleanup(inName, outName);
-    }
-  }
-
-  async cleanup(...names) {
-    if (!this.ffmpeg) return;
-    for (const n of names.length ? names : []) {
-      try { await this.ffmpeg.deleteFile(n); } catch {}
-    }
-  }
-
-  // Eingabe wieder entfernen, ohne umzuwandeln
-  async discard(file) {
-    await this.cleanup("input." + getExt(file.name));
-  }
+// Eingabe wieder entfernen, ohne umzuwandeln
+export async function discard(file) {
+  await engine.remove("mono_in." + getExt(file.name));
 }
