@@ -256,6 +256,28 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .note { margin: var(--space-6) 0 0; color: var(--ink-muted); font-size: 14px; }
 .note + .btn { margin-top: var(--space-4); }
 
+/* ---------- Ausschnitt (Zeitleiste) ---------- */
+.trim { margin-bottom: var(--space-6); }
+.timeline {
+  position: relative; height: 40px; margin-top: var(--space-4);
+  border-radius: var(--radius-pill); background: var(--surface); overflow: hidden;
+}
+.tl-sel {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 100%;
+  border-radius: var(--radius-pill); background: var(--accent);
+  transition: left .25s var(--ease-out), width .25s var(--ease-out);
+}
+.tl-head {
+  position: absolute; top: 6px; bottom: 6px; left: 0; width: 4px; margin-left: -2px;
+  border-radius: var(--radius-pill); background: var(--juicy-pink);
+}
+.trim-info { margin: var(--space-2) 0 0; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.trim .sliders { margin-top: var(--space-2); }
+.opt.disabled span { opacity: .35; cursor: not-allowed; transform: none; }
+
+.btn-cancel { margin-top: var(--space-4); animation: pop .4s var(--ease) both; }
+.btn-cancel:hover:not(:disabled) { background: var(--juicy-pink); color: var(--juicy-black); border-color: var(--juicy-black); }
+
 /* ---------- Fortschritt, Status ---------- */
 .output { margin-top: var(--space-4); }
 .progress { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-4); animation: pop .4s var(--ease) both; }

@@ -50,6 +50,7 @@
             <progress id="mono-progress" max="100"></progress>
             <span id="mono-progress-label"></span>
           </div>
+          <button type="button" id="mono-cancel" class="btn btn-ghost btn-cancel" hidden></button>
           <div id="mono-status" class="status" role="status" aria-live="polite"></div>
           <a id="mono-download" class="btn btn-download" hidden></a>
           <details id="mono-details" hidden>
@@ -98,6 +99,20 @@
             </div>
           </div>
 
+          <fieldset class="chips trim">
+            <legend id="o-trim"></legend>
+            <div class="chip-row" id="ov-trims"></div>
+            <div class="timeline" id="ov-timeline" aria-hidden="true">
+              <div class="tl-sel" id="ov-tl-sel"></div>
+              <div class="tl-head" id="ov-tl-head"></div>
+            </div>
+            <p class="trim-info" id="ov-trim-info"></p>
+            <div class="sliders">
+              <label class="slider"><span id="o-start"></span><input id="ov-start" type="range" min="0" step="0.1"><output id="ov-start-out"></output></label>
+              <label class="slider" id="ov-end-row"><span id="o-end"></span><input id="ov-end" type="range" min="0" step="0.1"><output id="ov-end-out"></output></label>
+            </div>
+          </fieldset>
+
           <fieldset class="chips">
             <legend id="o-layer"></legend>
             <div class="chip-row" id="ov-layers"></div>
@@ -124,6 +139,7 @@
             <progress id="ov-progress" max="100"></progress>
             <span id="ov-progress-label"></span>
           </div>
+          <button type="button" id="ov-cancel" class="btn btn-ghost btn-cancel" hidden></button>
           <div id="ov-status" class="status" role="status" aria-live="polite"></div>
           <a id="ov-download" class="btn btn-download" hidden></a>
           <details id="ov-details" hidden>

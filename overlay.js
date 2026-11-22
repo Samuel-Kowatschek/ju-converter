@@ -29,8 +29,11 @@ export function parseFps(log) {
   return fps > 0 && fps <= 120 ? fps : FALLBACK_FPS;
 }
 
+// Sekunden für ffmpeg (Punkt als Dezimaltrenner, 3 Nachkommastellen)
+const sec = (n) => Math.max(0, n).toFixed(3);
+
 // Filtergraph: Hintergrundfarbe -> Video -> PNG obendrauf
-export function buildArgs({ vIn, pIn, out, fps, canvas, bg, v, p }) {
+export function buildArgs({ vIn, pIn, out, fps, canvas, bg, v, p, trim }) {
   const W = even(canvas.w);
   const H = even(canvas.h);
   const color = "0x" + bg.replace("#", "");
@@ -40,7 +43,10 @@ export function buildArgs({ vIn, pIn, out, fps, canvas, bg, v, p }) {
     `[1:v]scale=${even(p.w)}:${even(p.h)},format=rgba[p];` +
     `[bg][v]overlay=${Math.round(v.x)}:${Math.round(v.y)}:shortest=1[t];` +
     `[t][p]overlay=${Math.round(p.x)}:${Math.round(p.y)}:shortest=1:format=auto,format=yuv420p[out]`;
+  // Ausschnitt: -ss/-t vor -i schneidet Bild und Ton (exakt, da neu kodiert wird)
+  const cut = trim ? ["-ss", sec(trim.start), "-t", sec(trim.end - trim.start)] : [];
   return [
+    ...cut,
     "-i", vIn,
     "-loop", "1", "-i", pIn,
     "-filter_complex", filter,
@@ -61,13 +67,18 @@ export async function probeVideoSize(file) {
     await engine.write(name, file);
     await engine.exec(["-hide_banner", "-i", name]);
     const m = /Stream #\d+:\d+.*?: Video: .*?, (\d{2,5})x(\d{2,5})/.exec(engine.log);
-    return m ? { w: Number(m[1]), h: Number(m[2]) } : null;
+    const d = /Duration: (\d+):(\d+):([\d.]+)/.exec(engine.log);
+    if (!m) return null;
+    return {
+      w: Number(m[1]), h: Number(m[2]),
+      duration: d ? Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]) : 0,
+    };
   } finally {
     await engine.remove(name);
   }
 }
 
-// job: { video: File, png: File, canvas, bg, v, p } (Koordinaten in Ausgabe-Pixeln)
+// job: { video: File, png: File, canvas, bg, v, p, trim: {start, end} | null } (Koordinaten in Ausgabe-Pixeln)
 export async function compose(job) {
   const vIn = "ov_in." + getExt(job.video.name);
   const pIn = "ov_in.png";

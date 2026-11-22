@@ -1,7 +1,7 @@
 // Alle UI-Texte zentral (später de/en möglich). Standard: Deutsch.
 import { fmt } from "./ui.js";
 
-export const VERSION = "v2.0";
+export const VERSION = "v2.1";
 
 export const TEXT = {
   title: "Toolbox",
@@ -16,6 +16,8 @@ export const TEXT = {
   size: (name, bytes) => `${name} · ${fmt(bytes)}`,
   progress: (p) => (p == null ? "Arbeite ..." : `Arbeite ... ${p} %`),
   download: (name) => `Herunterladen: ${name}`,
+  cancel: "Abbrechen",
+  cancelled: "Abgebrochen. Es wurde nichts gespeichert.",
   engineError: "Die Engine konnte nicht geladen werden. Bitte Seite neu laden.",
   footer:
     'Läuft mit <a href="https://github.com/ffmpegwasm/ffmpeg.wasm">ffmpeg.wasm</a> ' +
@@ -63,6 +65,12 @@ export const TEXT = {
     center: "Zentrieren",
     cover: "Füllen",
     contain: "Einpassen",
+    trim: "Ausschnitt",
+    trimModes: { s15: "15 s", s30: "30 s", free: "Frei" },
+    trimTooShort: (n) => `Das Video ist kürzer als ${n} s.`,
+    start: "Start",
+    end: "Ende",
+    trimInfo: (a, b, d) => `${a} – ${b} · ${d}`,
     go: "Video erstellen",
     slowNote: "Das Video wird neu berechnet. Je nach Länge kann das einige Minuten dauern.",
     rendering: "Erstelle Video ...",

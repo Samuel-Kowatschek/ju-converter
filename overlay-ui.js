@@ -6,6 +6,17 @@ import { VIDEO_EXTS, FORMATS, outputName, compose, probeVideoSize } from "./over
 
 const T = TEXT.overlay;
 const DEFAULT_CANVAS = FORMATS.portrait;
+// Ausschnitt-Presets in Sekunden (null = freie Auswahl)
+const TRIM_PRESETS = { s15: 15, s30: 30, free: null };
+const MIN_LEN = 0.5; // kürzester freier Ausschnitt
+
+// 75.3 -> "1:15,3"
+function fmtTime(t) {
+  const m = Math.floor(t / 60);
+  const s = (t - m * 60).toFixed(1).padStart(4, "0").replace(".", ",");
+  return `${m}:${s}`;
+}
+const fmtLen = (t) => t.toFixed(1).replace(".", ",") + " s";
 
 export function initOverlay() {
   $("o-title").textContent = T.title;
@@ -20,6 +31,9 @@ export function initOverlay() {
   $("o-x").textContent = T.x;
   $("o-y").textContent = T.y;
   $("o-scale").textContent = T.scale;
+  $("o-trim").textContent = T.trim;
+  $("o-start").textContent = T.start;
+  $("o-end").textContent = T.end;
   $("ov-center").textContent = T.center;
   $("ov-cover").textContent = T.cover;
   $("ov-contain").textContent = T.contain;
@@ -35,6 +49,13 @@ export function initOverlay() {
   const editor = $("ov-editor");
   const sliders = { x: $("ov-x"), y: $("ov-y"), scale: $("ov-scale") };
   const outputs = { x: $("ov-x-out"), y: $("ov-y-out"), scale: $("ov-scale-out") };
+  const trimEl = {
+    box: document.querySelector(".trim"),
+    start: $("ov-start"), end: $("ov-end"),
+    startOut: $("ov-start-out"), endOut: $("ov-end-out"),
+    endRow: $("ov-end-row"), info: $("ov-trim-info"),
+    sel: $("ov-tl-sel"), head: $("ov-tl-head"),
+  };
 
   // Platzhalter, falls der Browser das Video nicht zeigen kann
   const ph = document.createElement("div");
@@ -52,6 +73,9 @@ export function initOverlay() {
     format: "png", bg: "black", layer: "video",
     canvas: { w: DEFAULT_CANVAS[0], h: DEFAULT_CANVAS[1] },
     v: null, p: null, // Ebenen in Ausgabe-Pixeln {x,y,w,h}
+    dur: 0, // Videolänge in s (0 = unbekannt -> kein Zuschnitt)
+    trimMode: "free",
+    trim: { start: 0, end: 0 },
   };
   let running = false;
 
@@ -80,9 +104,103 @@ export function initOverlay() {
   chips($("ov-colors"), "ov-bg", Object.entries(T.colors), st.bg, (k) => {
     st.bg = k; render();
   }, true);
+  chips($("ov-trims"), "ov-trim", Object.entries(T.trimModes), st.trimMode, (k) => {
+    st.trimMode = k; applyTrimMode(); seekToStart();
+  });
   chips($("ov-layers"), "ov-layer", Object.entries(T.layers), st.layer, (k) => {
     st.layer = k; render();
   });
+
+  // ---------- Ausschnitt ----------
+  const presetLen = () => TRIM_PRESETS[st.trimMode];
+
+  function setDuration(d) {
+    st.dur = isFinite(d) && d > 0 ? d : 0;
+    // Presets, die länger als das Video sind, deaktivieren
+    for (const input of document.querySelectorAll('input[name="ov-trim"]')) {
+      const n = TRIM_PRESETS[input.value];
+      const off = n != null && st.dur > 0 && st.dur <= n;
+      input.disabled = off;
+      input.parentElement.title = off ? T.trimTooShort(n) : "";
+      input.parentElement.classList.toggle("disabled", off);
+    }
+    if (presetLen() != null && st.dur <= presetLen()) st.trimMode = "free";
+    for (const input of document.querySelectorAll('input[name="ov-trim"]')) input.checked = input.value === st.trimMode;
+    st.trim = { start: 0, end: st.dur };
+    applyTrimMode();
+  }
+
+  function applyTrimMode() {
+    const n = presetLen();
+    const t = st.trim;
+    if (n != null) {
+      t.start = Math.min(t.start, Math.max(0, st.dur - n));
+      t.end = t.start + Math.min(n, st.dur);
+    } else if (t.end - t.start < MIN_LEN) {
+      t.end = Math.min(st.dur, t.start + MIN_LEN);
+    }
+    renderTrim();
+  }
+
+  function setStart(v) {
+    const n = presetLen();
+    const t = st.trim;
+    if (n != null) {
+      t.start = Math.min(Math.max(0, v), Math.max(0, st.dur - n));
+      t.end = t.start + Math.min(n, st.dur);
+    } else {
+      t.start = Math.min(Math.max(0, v), Math.max(0, t.end - MIN_LEN));
+    }
+    renderTrim();
+  }
+
+  function setEnd(v) {
+    const t = st.trim;
+    t.end = Math.max(Math.min(st.dur, v), Math.min(st.dur, t.start + MIN_LEN));
+    renderTrim();
+  }
+
+  function renderTrim() {
+    trimEl.box.hidden = !st.dur;
+    if (!st.dur) return;
+    const t = st.trim;
+    for (const r of [trimEl.start, trimEl.end]) r.max = String(st.dur);
+    trimEl.start.value = String(t.start);
+    trimEl.end.value = String(t.end);
+    trimEl.startOut.textContent = fmtTime(t.start);
+    trimEl.endOut.textContent = fmtTime(t.end);
+    trimEl.endRow.hidden = presetLen() != null;
+    trimEl.info.textContent = T.trimInfo(fmtTime(t.start), fmtTime(t.end), fmtLen(t.end - t.start));
+    trimEl.sel.style.left = (t.start / st.dur) * 100 + "%";
+    trimEl.sel.style.width = ((t.end - t.start) / st.dur) * 100 + "%";
+  }
+
+  function seekToStart() {
+    if (st.dur && !vidEl.hidden) {
+      try { vidEl.currentTime = st.trim.start; } catch {}
+    }
+  }
+
+  trimEl.start.addEventListener("input", () => { setStart(Number(trimEl.start.value)); seekToStart(); });
+  trimEl.end.addEventListener("input", () => {
+    setEnd(Number(trimEl.end.value));
+    // Vorschau kurz vor das Ende setzen, damit man den Schnittpunkt sieht
+    if (!vidEl.hidden) try { vidEl.currentTime = Math.max(st.trim.start, st.trim.end - 1); } catch {}
+  });
+
+  // Vorschau nur im Ausschnitt abspielen + Abspielkopf anzeigen
+  function loop() {
+    if (st.dur && !vidEl.hidden && vidEl.readyState >= 1) {
+      const t = st.trim;
+      const now = vidEl.currentTime;
+      if (now >= t.end || now < t.start - 0.25) {
+        try { vidEl.currentTime = t.start; } catch {}
+      }
+      trimEl.head.style.left = (Math.min(now, st.dur) / st.dur) * 100 + "%";
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
 
   // ---------- Geometrie ----------
   function fit(nat, mode) {
@@ -212,6 +330,7 @@ export function initOverlay() {
     $("ov-video-name").textContent = TEXT.size(file.name, file.size);
     drop.classList.add("has-file");
     st.video = null; st.vNat = null; st.v = null;
+    setDuration(0);
     render();
     if (!VIDEO_EXTS.includes(getExt(file.name))) return out.status(T.badVideo, "error");
     if (!checkSize(file)) return;
@@ -223,6 +342,7 @@ export function initOverlay() {
       st.video = file;
       st.vNat = { w: vidEl.videoWidth, h: vidEl.videoHeight };
       st.v = fit(st.vNat, "cover");
+      setDuration(vidEl.duration);
       render();
       vidEl.play().catch(() => {});
     };
@@ -237,8 +357,9 @@ export function initOverlay() {
         });
         if (!size) throw new Error("no size");
         st.video = file;
-        st.vNat = size;
-        st.v = fit(size, "cover");
+        st.vNat = { w: size.w, h: size.h };
+        st.v = fit(st.vNat, "cover");
+        setDuration(size.duration);
         out.status(T.videoUnreadable, "warn");
         render();
       } catch (e) {
@@ -294,16 +415,24 @@ export function initOverlay() {
       canvas: { ...st.canvas },
       bg: css.getPropertyValue(`--juicy-${st.bg}`).trim(),
       v: { ...st.v }, p: { ...st.p },
+      trim: null,
     };
+    // Zuschneiden nur, wenn nicht das ganze Video gewählt ist
+    const t = st.trim;
+    if (st.dur && (t.start > 0.05 || t.end < st.dur - 0.05)) job.trim = { start: t.start, end: t.end };
+    const len = job.trim ? job.trim.end - job.trim.start : st.dur;
     try {
       await engine.lock(async () => {
+        out.running(true, TEXT.cancel, () => engine.cancel());
         out.progress(null);
         out.status(TEXT.loadingEngine, "info");
         await engine.load();
         loaded = true;
         out.status(T.rendering, "info");
-        engine.onProgress = (p) => {
-          const pct = out.progress(p);
+        // Fortschritt aus der Ausgabezeit (stimmt auch beim Zuschnitt)
+        engine.onTime = (sec) => {
+          if (!len) return;
+          const pct = out.progress(Math.min(1, sec / len));
           if (pct != null) out.status(TEXT.progress(pct), "info");
         };
         const blob = await compose(job);
@@ -316,11 +445,14 @@ export function initOverlay() {
       out.hideProgress();
       if (e instanceof BusyError) {
         out.status(TEXT.busyOther, "warn");
+      } else if (engine.cancelled) {
+        out.status(TEXT.cancelled, "info");
       } else {
         out.showLog(engine.log + "\n" + (e && e.message ? e.message : e));
         out.status(loaded ? T.error : TEXT.engineError, "error");
       }
     } finally {
+      out.running(false);
       running = false;
       render();
     }
