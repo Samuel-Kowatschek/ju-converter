@@ -256,6 +256,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .note { margin: var(--space-6) 0 0; color: var(--ink-muted); font-size: 14px; }
 .note + .btn { margin-top: var(--space-4); }
 
+/* ---------- Ton-Schalter ---------- */
+.preview-controls { display: flex; justify-content: center; margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
+.sound {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 10px var(--space-4); border: 2px solid var(--ink); border-radius: var(--radius-pill);
+  background: var(--surface); font-size: 15px; font-weight: 500; cursor: pointer;
+  transition: background .25s, color .25s, border-color .25s, transform .3s var(--ease);
+}
+.sound:hover { transform: translateY(-2px); }
+.sound:active { transform: scale(.96); }
+.sound[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.sound .wave { display: none; }
+.sound[aria-pressed="true"] .wave { display: inline; animation: pulse 1.2s ease-in-out infinite alternate; }
+.sound[aria-pressed="true"] .cross { display: none; }
+@keyframes pulse { from { opacity: .4; } }
+
 /* ---------- Ausschnitt (Zeitleiste) ---------- */
 .trim { margin-bottom: var(--space-6); }
 .timeline {

@@ -57,6 +57,21 @@ export function initOverlay() {
     sel: $("ov-tl-sel"), head: $("ov-tl-head"),
   };
 
+  // Ton der Vorschau (Autoplay geht nur stumm, daher per Klick einschalten)
+  const soundBtn = $("ov-sound");
+  const soundLabel = $("ov-sound-label");
+  function renderSound() {
+    const on = !vidEl.muted;
+    soundBtn.setAttribute("aria-pressed", String(on));
+    soundLabel.textContent = on ? T.soundOff : T.soundOn;
+  }
+  soundBtn.addEventListener("click", () => {
+    vidEl.muted = !vidEl.muted;
+    vidEl.play().catch(() => {});
+    renderSound();
+  });
+  renderSound();
+
   // Platzhalter, falls der Browser das Video nicht zeigen kann
   const ph = document.createElement("div");
   ph.className = "ph";
@@ -336,7 +351,7 @@ export function initOverlay() {
     if (!checkSize(file)) return;
     if (st.vUrl) URL.revokeObjectURL(st.vUrl);
     st.vUrl = URL.createObjectURL(file);
-    vidEl.hidden = false; ph.hidden = true;
+    vidEl.hidden = false; ph.hidden = true; soundBtn.hidden = false;
     vidEl.onloadedmetadata = () => {
       if (!vidEl.videoWidth) return vidEl.onerror();
       st.video = file;
@@ -348,7 +363,7 @@ export function initOverlay() {
     };
     vidEl.onerror = async () => {
       // Vorschau nicht möglich (z. B. Codec) -> Maße per ffmpeg ermitteln
-      vidEl.hidden = true; ph.hidden = false;
+      vidEl.hidden = true; ph.hidden = false; soundBtn.hidden = true;
       out.status(T.videoUnreadable, "warn");
       try {
         const size = await engine.lock(async () => {
