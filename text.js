@@ -1,7 +1,7 @@
 // Alle UI-Texte zentral (später de/en möglich). Standard: Deutsch.
 import { fmt } from "./ui.js";
 
-export const VERSION = "v2.2";
+export const VERSION = "v2.3";
 
 export const TEXT = {
   title: "Toolbox",

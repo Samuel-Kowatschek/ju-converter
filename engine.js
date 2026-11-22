@@ -19,7 +19,24 @@ export function baseName(name) {
 class Engine {
   ff = null;
   loading = null; // Instanz, die gerade lädt
-  log = "";
+  #lines = [];
+
+  // Log als Text. "Last message repeated N times" wird zu einer Zeile zusammengefasst,
+  // damit die eigentliche Meldung darüber sichtbar bleibt.
+  get log() { return this.#lines.join("\n"); }
+  set log(text) { this.#lines = text ? text.split("\n") : []; }
+
+  #addLog(message) {
+    const rep = /^\s*Last message repeated (\d+) times?/.exec(message);
+    const last = this.#lines.length - 1;
+    if (rep && last >= 0 && /^\s*\(oben: /.test(this.#lines[last])) {
+      this.#lines[last] = `    (oben: Meldung ${Number(rep[1]) + 1}x insgesamt)`;
+    } else if (rep) {
+      this.#lines.push(`    (oben: Meldung ${Number(rep[1]) + 1}x insgesamt)`);
+    } else {
+      this.#lines.push(message);
+    }
+  }
   busy = false;
   cancelled = false;
   onProgress = () => {};
@@ -30,7 +47,7 @@ class Engine {
     onLoadStart();
     const ff = new FFmpeg();
     ff.on("log", ({ message }) => {
-      this.log += message + "\n";
+      this.#addLog(message);
       const t = /time=(\d+):(\d+):([\d.]+)/.exec(message);
       if (t) this.onTime(Number(t[1]) * 3600 + Number(t[2]) * 60 + Number(t[3]));
     });
