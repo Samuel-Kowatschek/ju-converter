@@ -18,16 +18,24 @@ export function baseName(name) {
 
 class Engine {
   ff = null;
+  loading = null; // Instanz, die gerade lädt
   log = "";
   busy = false;
+  cancelled = false;
   onProgress = () => {};
+  onTime = () => {}; // Sekunden der Ausgabe, aus den ffmpeg-Statuszeilen
 
   async load(onLoadStart = () => {}) {
     if (this.ff) return;
     onLoadStart();
     const ff = new FFmpeg();
-    ff.on("log", ({ message }) => { this.log += message + "\n"; });
+    ff.on("log", ({ message }) => {
+      this.log += message + "\n";
+      const t = /time=(\d+):(\d+):([\d.]+)/.exec(message);
+      if (t) this.onTime(Number(t[1]) * 3600 + Number(t[2]) * 60 + Number(t[3]));
+    });
     ff.on("progress", ({ progress }) => this.onProgress(progress));
+    this.loading = ff;
     try {
       await ff.load({
         coreURL: new URL("./vendor/ffmpeg/core/ffmpeg-core.js", import.meta.url).href,
@@ -36,7 +44,10 @@ class Engine {
     } catch (e) {
       try { ff.terminate(); } catch {}
       throw e;
+    } finally {
+      this.loading = null;
     }
+    if (this.cancelled) throw new Error("cancelled");
     this.ff = ff;
   }
 
@@ -71,15 +82,28 @@ class Engine {
     }
   }
 
+  // Laufenden Job abbrechen: ffmpeg.wasm kann nur per terminate() stoppen,
+  // die Engine wird beim nächsten Lauf neu geladen (aus dem Browser-Cache).
+  cancel() {
+    if (!this.busy) return;
+    this.cancelled = true;
+    if (this.loading) {
+      try { this.loading.terminate(); } catch {}
+    }
+    this.reset();
+  }
+
   // Sperrt die Engine für die Dauer eines Laufs (immer nur ein Job gleichzeitig)
   async lock(fn) {
     if (this.busy) throw new BusyError();
     this.busy = true;
+    this.cancelled = false;
     try {
       return await fn();
     } finally {
       this.busy = false;
       this.onProgress = () => {};
+      this.onTime = () => {};
     }
   }
 }

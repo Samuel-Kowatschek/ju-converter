@@ -4,7 +4,8 @@ Statische Website (GitHub Pages) mit Video-Tools f체r JuicyUnderground. Alles l�
 
 Tools:
 - `01.Mono`: Tonspur Stereo -> Mono, Bild unver채ndert (`-c:v copy`).
-- `02.Overlay`: Video hinter ein PNG legen, beide Ebenen verschieb-/skalierbar, Ausgabe MP4 (H.264/AAC, neu kodiert).
+- `02.Overlay`: Video hinter ein PNG legen, beide Ebenen verschieb-/skalierbar, Ausschnitt w채hlbar (15 s, 30 s, frei), Ausgabe MP4 (H.264/AAC, neu kodiert).
+- Abbrechen: `engine.cancel()` beendet ffmpeg per `terminate()`, der n채chste Lauf l채dt die Engine neu.
 
 - Vanilla JS, ES Modules, kein Build-Step. Alle Texte und `VERSION` in `text.js`, Farben nur als CSS-Variablen.
 - Dateien: `index.html`, `style.css`, `app.js` (Rahmen, Tabs, UI Mono), `overlay-ui.js` (UI Overlay), `ui.js` (gemeinsame UI-Helfer), `engine.js` (eine gemeinsame ffmpeg-Instanz, lazy, ein Job gleichzeitig), `convert.js` (Mono-Logik), `overlay.js` (Overlay-Logik/Filtergraph), `vendor/ffmpeg/` (selbst gehostet, `VERSION.txt`), `fonts/` (Bricolage Grotesque, OFL), `assets/` (JU-Logo), `tests/` (Testvideos + `frame.png`).

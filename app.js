@@ -81,6 +81,7 @@ async function run() {
   let loaded = !!engine.ff;
   try {
     await engine.lock(async () => {
+      out.running(true, TEXT.cancel, () => engine.cancel());
       out.progress(null);
       out.status(TEXT.loadingEngine, "info");
       await engine.load();
@@ -114,11 +115,14 @@ async function run() {
     out.hideProgress();
     if (e instanceof BusyError) {
       out.status(TEXT.busyOther, "warn");
+    } else if (engine.cancelled) {
+      out.status(TEXT.cancelled, "info");
     } else {
       out.showLog(engine.log + "\n" + (e && e.message ? e.message : e));
       out.status(loaded ? T.error : TEXT.engineError, "error");
     }
   } finally {
+    out.running(false);
     running = false;
     go.disabled = !current;
   }

@@ -35,6 +35,7 @@ export function createOutput(prefix) {
     dl: $(`${prefix}-download`),
     details: $(`${prefix}-details`),
     log: $(`${prefix}-log`),
+    cancel: $(`${prefix}-cancel`),
   };
   let url = null;
 
@@ -63,6 +64,12 @@ export function createOutput(prefix) {
       return pct;
     },
     hideProgress() { el.wrap.hidden = true; },
+    // Abbrechen-Button nur während eines Laufs zeigen
+    running(on, label, onCancel) {
+      el.cancel.hidden = !on;
+      if (label) el.cancel.textContent = label;
+      if (onCancel) el.cancel.onclick = onCancel;
+    },
     download(blob, name, label) {
       url = URL.createObjectURL(blob);
       el.dl.href = url;
