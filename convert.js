@@ -64,7 +64,11 @@ export async function convert(file, streams) {
   try {
     const code = await engine.exec([
       "-i", inName,
-      "-map", "0",
+      // Bild, alle Tonspuren, Untertitel. Datenspuren (Timecode, Handy-Metadaten)
+      // werden weggelassen, MP4 kann sie beim Kopieren oft nicht aufnehmen.
+      "-map", "0:v?",
+      "-map", "0:a",
+      "-map", "0:s?",
       "-c:v", "copy",
       "-c:s", "copy",
       "-ac", "1",
