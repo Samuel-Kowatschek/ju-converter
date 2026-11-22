@@ -1,7 +1,7 @@
 // Alle UI-Texte zentral (später de/en möglich). Standard: Deutsch.
 import { fmt } from "./ui.js";
 
-export const VERSION = "v2.1";
+export const VERSION = "v2.2";
 
 export const TEXT = {
   title: "Toolbox",
@@ -65,6 +65,8 @@ export const TEXT = {
     center: "Zentrieren",
     cover: "Füllen",
     contain: "Einpassen",
+    soundOn: "Ton einschalten",
+    soundOff: "Ton ausschalten",
     trim: "Ausschnitt",
     trimModes: { s15: "15 s", s30: "30 s", free: "Frei" },
     trimTooShort: (n) => `Das Video ist kürzer als ${n} s.`,
