@@ -3,46 +3,142 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; media-src 'self' blob:; style-src 'self'; img-src 'self' data:">
-  <title>Mono Converter</title>
-  <meta name="description" content="Wandelt die Tonspur eines Videos lokal im Browser von Stereo zu Mono um.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; media-src 'self' blob:; style-src 'self'; img-src 'self' data: blob:; font-src 'self'">
+  <title>JU Toolbox</title>
+  <meta name="description" content="Werkzeuge für JuicyUnderground: Video-Ton zu Mono, Video hinter PNG legen. Alles lokal im Browser.">
+  <link rel="icon" href="assets/ju-logo-blue.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="bg" aria-hidden="true"><span></span><span></span><span></span></div>
-  <main class="glass">
-    <h1 id="t-title"></h1>
-    <p id="t-sub" class="sub"></p>
-    <p id="t-privacy" class="privacy"></p>
+  <div class="page">
+    <header class="hero">
+      <span class="stripe stripe-pink" aria-hidden="true"></span>
+      <span class="stripe stripe-black" aria-hidden="true"></span>
+      <svg class="logo" viewBox="0 0 1500 1047.01" role="img" aria-label="JuicyUnderground">
+        <path fill="currentColor" d="M1500,20.31v568.73c0,251.24-202.4,457.45-453.62,457.97-79.32.15-153.89-19.99-218.85-55.51-27.7-15.17-53.63-33.1-77.45-53.47-.02-.03-.37-.27-.37-.27,0,0-11.6-7.31-98.18-89.09-86.58-81.77,52.91,108.23,52.91,108.23l5.3,7.38c.98,1.37.86,3.22-.2,4.44-.2.22-.42.42-.68.59-72.83,49.2-160.65,77.88-255.22,77.69C202.4,1046.49,0,840.28,0,589.04v-149.73c0-12.22,10.72-21.67,22.84-20.16l277.72,34.81c10.17,1.27,17.79,9.92,17.79,20.16v118.31c0,75.22,61.02,136.24,136.24,136.24s136.24-61.02,136.24-136.24V129.17c0-10.24,7.62-18.88,17.79-20.16l13.75-1.73,263.97-33.06c12.12-1.52,22.84,7.94,22.84,20.15v498.06c0,75.22,61,136.24,136.24,136.24s136.24-61.02,136.24-136.24V55.12c0-10.24,7.62-18.88,17.79-20.16L1477.16.16c12.12-1.52,22.84,7.92,22.84,20.15Z"/>
+      </svg>
+      <p class="kicker">JuicyUnderground</p>
+      <h1 id="t-title"></h1>
+      <p id="t-sub" class="hero-sub"></p>
+      <p id="t-privacy" class="chip chip-lime"></p>
+    </header>
 
-    <label id="dropzone" class="dropzone" for="file">
-      <input id="file" type="file" accept=".mp4,.mov,.m4v,.mkv,.webm,video/*">
-      <svg class="dz-icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
-      <span id="dz-text"></span>
-    </label>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button type="button" role="tab" id="tab-mono" aria-controls="panel-mono" data-tool="mono"></button>
+      <button type="button" role="tab" id="tab-overlay" aria-controls="panel-overlay" data-tool="overlay"></button>
+    </nav>
 
-    <p id="fileinfo" class="fileinfo" hidden></p>
+    <main>
+      <!-- 01.Mono -->
+      <section class="card tool" id="panel-mono" role="tabpanel" aria-labelledby="tab-mono" tabindex="0">
+        <h2 id="m-title"></h2>
+        <p id="m-sub" class="tool-sub"></p>
 
-    <button id="go" type="button" class="primary" disabled></button>
+        <label class="dropzone" id="mono-drop" for="mono-file">
+          <input id="mono-file" type="file" accept=".mp4,.mov,.m4v,.mkv,.webm,video/*">
+          <span class="dz-icon" aria-hidden="true">+</span>
+          <span class="dz-text" id="m-drop"></span>
+          <span class="dz-hint" id="m-hint"></span>
+        </label>
+        <p id="mono-info" class="fileinfo" hidden></p>
 
-    <div id="progress-wrap" hidden>
-      <progress id="progress" max="100"></progress>
-      <span id="progress-label"></span>
-    </div>
+        <button id="mono-go" type="button" class="btn" disabled></button>
 
-    <div id="status" role="status" aria-live="polite"></div>
+        <div class="output">
+          <div id="mono-progress-wrap" class="progress" hidden>
+            <progress id="mono-progress" max="100"></progress>
+            <span id="mono-progress-label"></span>
+          </div>
+          <div id="mono-status" class="status" role="status" aria-live="polite"></div>
+          <a id="mono-download" class="btn btn-download" hidden></a>
+          <details id="mono-details" hidden>
+            <summary class="t-details"></summary>
+            <pre id="mono-log"></pre>
+          </details>
+        </div>
+      </section>
 
-    <a id="download" class="primary button" hidden></a>
+      <!-- 02.Overlay -->
+      <section class="card tool" id="panel-overlay" role="tabpanel" aria-labelledby="tab-overlay" tabindex="0" hidden>
+        <h2 id="o-title"></h2>
+        <p id="o-sub" class="tool-sub"></p>
 
-    <details id="details" hidden>
-      <summary id="t-details"></summary>
-      <pre id="log"></pre>
-    </details>
-  </main>
-  <footer>
-    <p id="t-footer"></p>
-    <p id="version" class="version"></p>
-  </footer>
+        <div class="drop-grid">
+          <label class="dropzone dropzone-sm" id="ov-video-drop" for="ov-video-file">
+            <input id="ov-video-file" type="file" accept=".mp4,.mov,.m4v,.mkv,.webm,video/*">
+            <span class="dz-icon" aria-hidden="true">+</span>
+            <span class="dz-text" id="o-video-drop"></span>
+            <span class="dz-hint" id="ov-video-name"></span>
+          </label>
+          <label class="dropzone dropzone-sm" id="ov-png-drop" for="ov-png-file">
+            <input id="ov-png-file" type="file" accept=".png,image/png">
+            <span class="dz-icon" aria-hidden="true">+</span>
+            <span class="dz-text" id="o-png-drop"></span>
+            <span class="dz-hint" id="ov-png-name"></span>
+          </label>
+        </div>
+
+        <div class="options">
+          <fieldset class="chips">
+            <legend id="o-format"></legend>
+            <div class="chip-row" id="ov-formats"></div>
+          </fieldset>
+          <fieldset class="chips">
+            <legend id="o-bg"></legend>
+            <div class="chip-row" id="ov-colors"></div>
+          </fieldset>
+        </div>
+
+        <div id="ov-editor" class="editor" hidden>
+          <div class="stage-wrap">
+            <div id="ov-stage" class="stage" tabindex="0" role="application">
+              <video id="ov-video" muted loop playsinline autoplay></video>
+              <img id="ov-png" alt="">
+            </div>
+          </div>
+
+          <fieldset class="chips">
+            <legend id="o-layer"></legend>
+            <div class="chip-row" id="ov-layers"></div>
+          </fieldset>
+
+          <div class="sliders">
+            <label class="slider"><span id="o-x"></span><input id="ov-x" type="range" step="1"><output id="ov-x-out"></output></label>
+            <label class="slider"><span id="o-y"></span><input id="ov-y" type="range" step="1"><output id="ov-y-out"></output></label>
+            <label class="slider"><span id="o-scale"></span><input id="ov-scale" type="range" min="5" max="400" step="1"><output id="ov-scale-out"></output></label>
+          </div>
+
+          <div class="btn-row">
+            <button type="button" class="btn btn-ghost" id="ov-center"></button>
+            <button type="button" class="btn btn-ghost" id="ov-cover"></button>
+            <button type="button" class="btn btn-ghost" id="ov-contain"></button>
+          </div>
+        </div>
+
+        <p id="ov-note" class="note"></p>
+        <button id="ov-go" type="button" class="btn" disabled></button>
+
+        <div class="output">
+          <div id="ov-progress-wrap" class="progress" hidden>
+            <progress id="ov-progress" max="100"></progress>
+            <span id="ov-progress-label"></span>
+          </div>
+          <div id="ov-status" class="status" role="status" aria-live="polite"></div>
+          <a id="ov-download" class="btn btn-download" hidden></a>
+          <details id="ov-details" hidden>
+            <summary class="t-details"></summary>
+            <pre id="ov-log"></pre>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p id="version" class="version"></p>
+      <p id="t-footer"></p>
+    </footer>
+  </div>
   <script type="module" src="app.js"></script>
 </body>
 </html>
